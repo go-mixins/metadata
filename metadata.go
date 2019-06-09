@@ -8,18 +8,17 @@ import (
 	"net/http"
 )
 
-type m http.Header
-
 type mdKey struct{}
 
-func (h m) clone() http.Header {
-	h2 := make(m, len(h))
+// Clone header for thread safety
+func Clone(h http.Header) http.Header {
+	h2 := make(http.Header, len(h))
 	for k, vv := range h {
 		vv2 := make([]string, len(vv))
 		copy(vv2, vv)
 		h2[k] = vv2
 	}
-	return http.Header(h2)
+	return h2
 }
 
 // With injects metadata into Context
@@ -27,29 +26,30 @@ func With(ctx context.Context, md http.Header) context.Context {
 	return context.WithValue(ctx, mdKey{}, md)
 }
 
-// From extracts copy of metadata from the Context
+// From extracts metadata from the Context. It is responsibility of user to
+// clone it before modification.
 func From(ctx context.Context) http.Header {
 	md, _ := ctx.Value(mdKey{}).(http.Header)
-	return m(md).clone()
+	return md
 }
 
 // Set sets the metadata entries to single value
 func Set(ctx context.Context, key, value string) context.Context {
-	res := From(ctx)
+	res := Clone(From(ctx))
 	res.Set(key, value)
-	return context.WithValue(ctx, mdKey{}, res)
+	return With(ctx, res)
 }
 
 // Add adds the key, value pair to the metadata
 func Add(ctx context.Context, key, value string) context.Context {
-	res := From(ctx)
+	res := Clone(From(ctx))
 	res.Add(key, value)
-	return context.WithValue(ctx, mdKey{}, res)
+	return With(ctx, res)
 }
 
 // Del deletes the values associated with key from metadata
 func Del(ctx context.Context, key string) context.Context {
-	res := From(ctx)
+	res := Clone(From(ctx))
 	res.Del(key)
 	return With(ctx, res)
 }

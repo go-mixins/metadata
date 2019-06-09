@@ -4,13 +4,12 @@ package http
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/go-mixins/metadata"
 )
 
 // Handler wrapws provided http.Handler and injects header fields into requests
-// context metadata. All header names that start with `X-Meta-` are injected
+// context metadata. All header names that start with `HeaderKeyPrefix` are injected
 // automatically. Specify `ExtraFields` to extract some extra fields
 // from request header. The zero value of Handler is usable and wraps default
 // HTTP server.
@@ -34,27 +33,14 @@ func (h *Handler) handler() http.Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	md := make(http.Header)
-	for k, vv := range r.Header {
-		if newKey, ok := h.ExtraFields[k]; ok {
-			vv2 := make([]string, len(vv))
-			copy(vv2, vv)
-			md[newKey] = vv
-			continue
-		}
-		if newKey := strings.ToLower(k); strings.HasPrefix(newKey, "x-meta-") {
-			vv2 := make([]string, len(vv))
-			copy(vv2, vv)
-			md[strings.TrimPrefix(newKey, "x-meta-")] = vv
-		}
-	}
+	md := FromHeader(r.Header, h.ExtraFields)
 	h.handler().ServeHTTP(w, r.WithContext(metadata.With(r.Context(), md)))
 }
 
 // Transport allows to pass metadata in outgoing HTTP requests. For
 // compatibility with default request wrapper, all fields are converted to
-// headers with `X-Meta-` name prefix. The zero value is usable by default as a
-// http.RoundTripper.
+// headers with `HeaderKeyPrefix` prepended to their names. The zero value is
+// usable by default as a http.RoundTripper.
 type Transport struct {
 	// Base may be set to wrap another http.RoundTripper
 	Base http.RoundTripper
@@ -81,9 +67,8 @@ func (t *Transport) CancelRequest(req *http.Request) {
 // and makes the request.
 func (t *Transport) RoundTrip(r *http.Request) (*http.Response, error) {
 	ctx := r.Context()
-	r = r.WithContext(ctx) // shallow copy the request
-	for k, vv := range metadata.From(ctx) {
-		r.Header[http.CanonicalHeaderKey("X-Meta-"+k)] = vv
-	}
-	return t.base().RoundTrip(r)
+	req := r.WithContext(ctx) // shallow copy the request
+	req.Header = metadata.Clone(req.Header)
+	ToHeader(ctx, r.Header)
+	return t.base().RoundTrip(req)
 }

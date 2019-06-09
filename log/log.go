@@ -21,8 +21,8 @@ func only(md http.Header, fields []string) http.Header {
 }
 
 // Fields converts metadata fields into map compatible with `go-mixins/log`. By
-// default all fields are passed as is. If optional field names are specified,
-// only these keys from metadata are extracted.
+// default all fields are passed through and multiple values are joined with ",".
+// If field names are specified, only those keys are extracted.
 func Fields(ctx context.Context, fields ...string) log.M {
 	res := make(log.M)
 	for k, v := range only(metadata.From(ctx), fields) {
