@@ -20,13 +20,14 @@ func only(md http.Header, fields []string) http.Header {
 	return res
 }
 
-// Fields converts metadata fields into map compatible with `go-mixins/log`. By
-// default all fields are passed through and multiple values are joined with ",".
-// If field names are specified, only those keys are extracted.
-func Fields(ctx context.Context, fields ...string) log.M {
+// Entry converts metadata fields into log.ContextLogger and injects it in
+// context. By default all fields are passed to log context and multiple values
+// are joined with ",".  If field names are specified, only those keys are
+// extracted from metadata.
+func Entry(ctx context.Context, fields ...string) context.Context {
 	res := make(log.M)
 	for k, v := range only(metadata.From(ctx), fields) {
 		res[k] = strings.Join(v, ",")
 	}
-	return res
+	return log.With(ctx, log.Get(ctx).WithContext(res))
 }

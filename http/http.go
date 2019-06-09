@@ -11,21 +11,10 @@ import (
 // Handler wraps provided http.Handler and injects header fields into requests
 // context metadata. All header names that start with `HeaderKeyPrefix` are
 // have the prefix stripped and passed to request context automatically.
-//
-// Specify `ExtraFields` to extract some extra fields
-// from request header. Field names are passed to resulting metadata verbatim.
-//
 // The zero value of Handler is usable and wraps default HTTP server.
 type Handler struct {
 	// Handler is the handler used to handle the incoming request.
 	Handler http.Handler
-	// ExtraFields allows to pass arbitrary fields from incoming request
-	// header to metadata. E.g.:
-	//
-	// &Handler{
-	// 	ExtraFields: []string{"X-API-Key", "User-Agent"},
-	// }
-	ExtraFields []string
 }
 
 func (h *Handler) handler() http.Handler {
@@ -36,7 +25,7 @@ func (h *Handler) handler() http.Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := FromHeader(r.Context(), r.Header, h.ExtraFields...)
+	ctx := FromHeader(r.Context(), r.Header)
 	h.handler().ServeHTTP(w, r.WithContext(ctx))
 }
 
