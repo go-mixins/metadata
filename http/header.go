@@ -12,23 +12,24 @@ import (
 var HeaderKeyPrefix = "x-meta-"
 
 // FromHeader initializes new metadata from request header. All fields starting
-// with `HeaderKeyPrefix` are lowercased and prefix is stripped. If field hame is
-// present in `extraFields` map it is renamed to value for that key.
-func FromHeader(src http.Header, extraFields map[string]string) http.Header {
+// with `HeaderKeyPrefix` are lowercased and prefix is stripped. Optional list
+// of extra header field names can be provided.
+func FromHeader(ctx context.Context, src http.Header, extraFields ...string) context.Context {
 	md := make(http.Header)
 	for k, vv := range src {
-		if newKey, ok := extraFields[k]; ok {
-			vv2 := make([]string, len(vv))
-			copy(vv2, vv)
-			md[newKey] = vv
-			continue
-		} else if newKey := strings.ToLower(k); strings.HasPrefix(newKey, HeaderKeyPrefix) {
+		if newKey := strings.ToLower(k); strings.HasPrefix(newKey, HeaderKeyPrefix) {
 			vv2 := make([]string, len(vv))
 			copy(vv2, vv)
 			md[strings.TrimPrefix(newKey, HeaderKeyPrefix)] = vv
 		}
 	}
-	return md
+	for _, k := range extraFields {
+		vv := src[k]
+		vv2 := make([]string, len(vv))
+		copy(vv2, vv)
+		md[k] = vv
+	}
+	return metadata.With(ctx, md)
 }
 
 // ToHeader copies values from context metadata to specified http.Header,

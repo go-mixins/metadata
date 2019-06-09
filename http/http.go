@@ -8,11 +8,14 @@ import (
 	"github.com/go-mixins/metadata"
 )
 
-// Handler wrapws provided http.Handler and injects header fields into requests
-// context metadata. All header names that start with `HeaderKeyPrefix` are injected
-// automatically. Specify `ExtraFields` to extract some extra fields
-// from request header. The zero value of Handler is usable and wraps default
-// HTTP server.
+// Handler wraps provided http.Handler and injects header fields into requests
+// context metadata. All header names that start with `HeaderKeyPrefix` are
+// have the prefix stripped and passed to request context automatically.
+//
+// Specify `ExtraFields` to extract some extra fields
+// from request header. Field names are passed to resulting metadata verbatim.
+//
+// The zero value of Handler is usable and wraps default HTTP server.
 type Handler struct {
 	// Handler is the handler used to handle the incoming request.
 	Handler http.Handler
@@ -20,9 +23,9 @@ type Handler struct {
 	// header to metadata. E.g.:
 	//
 	// &Handler{
-	// 	ExtraFields: {"X-API-Key": "key"},
+	// 	ExtraFields: []string{"X-API-Key", "User-Agent"},
 	// }
-	ExtraFields map[string]string
+	ExtraFields []string
 }
 
 func (h *Handler) handler() http.Handler {
@@ -33,8 +36,8 @@ func (h *Handler) handler() http.Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	md := FromHeader(r.Header, h.ExtraFields)
-	h.handler().ServeHTTP(w, r.WithContext(metadata.With(r.Context(), md)))
+	ctx := FromHeader(r.Context(), r.Header, h.ExtraFields...)
+	h.handler().ServeHTTP(w, r.WithContext(ctx))
 }
 
 // Transport allows to pass metadata in outgoing HTTP requests. For
