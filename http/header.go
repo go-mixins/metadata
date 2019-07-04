@@ -19,7 +19,7 @@ func FromHeader(ctx context.Context, src http.Header) context.Context {
 		if newKey := strings.ToLower(k); strings.HasPrefix(newKey, HeaderKeyPrefix) {
 			vv2 := make([]string, len(vv))
 			copy(vv2, vv)
-			md[strings.TrimPrefix(newKey, HeaderKeyPrefix)] = vv
+			md[http.CanonicalHeaderKey(strings.TrimPrefix(newKey, HeaderKeyPrefix))] = vv
 		}
 	}
 	return metadata.With(ctx, md)
@@ -29,6 +29,8 @@ func FromHeader(ctx context.Context, src http.Header) context.Context {
 // prepending `HeaderKeyPrefix` to field names.
 func ToHeader(ctx context.Context, dest http.Header) {
 	for k, vv := range metadata.From(ctx) {
-		dest[http.CanonicalHeaderKey(HeaderKeyPrefix+k)] = vv
+		vv2 := make([]string, len(vv))
+		copy(vv2, vv)
+		dest[http.CanonicalHeaderKey(HeaderKeyPrefix+k)] = vv2
 	}
 }

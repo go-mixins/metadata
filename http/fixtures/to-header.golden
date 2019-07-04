@@ -1,0 +1,11 @@
+{
+	"X-Meta-Some-Key": [
+		"some-value 2"
+	],
+	"X-Meta-Some_key": [
+		"some-value 3"
+	],
+	"X-Meta-Some_other_key": [
+		"some-other-value"
+	]
+}
