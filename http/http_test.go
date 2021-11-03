@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"strings"
 	"testing"
 
 	"github.com/andviro/goldie"
@@ -67,4 +70,36 @@ func TestToHeader(t *testing.T) {
 	mdHTTP.ToHeader(ctx, hdr)
 	jd, _ := json.MarshalIndent(hdr, "", "\t")
 	goldie.Assert(t, "to-header", jd)
+}
+
+func TestRoundtripper_Handler(t *testing.T) {
+	c := &http.Client{
+		Transport: &mdHTTP.Transport{},
+	}
+	srv := httptest.NewServer(
+		&mdHTTP.Handler{
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				td, _ := httputil.DumpRequest(r, false)
+				t.Logf("%s", td)
+				fromService := metadata.Get(r.Context(), "from-service")
+				if fromService != "test" {
+					t.Errorf("invalid metadata received: %q", fromService)
+				}
+			}),
+		},
+	)
+	defer srv.Close()
+	req, err := http.NewRequest("POST", srv.URL, strings.NewReader("test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := metadata.Set(req.Context(), "from-service", "test")
+	req = req.WithContext(ctx)
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("invalid code: %d", resp.StatusCode)
+	}
 }

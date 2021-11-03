@@ -60,7 +60,8 @@ func (t *Transport) CancelRequest(req *http.Request) {
 func (t *Transport) RoundTrip(r *http.Request) (*http.Response, error) {
 	ctx := r.Context()
 	req := r.WithContext(ctx) // shallow copy the request
-	req.Header = metadata.Clone(req.Header)
-	ToHeader(ctx, r.Header)
+	hdr := metadata.Clone(req.Header)
+	ToHeader(ctx, hdr)
+	req.Header = hdr
 	return t.base().RoundTrip(req)
 }
